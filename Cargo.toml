@@ -1,0 +1,15 @@
+[package]
+name = "surfer"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+anyhow = "1.0.93"
+chrono = "0.4.38"
+clap = { version = "4.5.21", features = ["derive", "env"] }
+console = "0.15.8"
+dialoguer = "0.11.0"
+solana-client = "2.1.4"
+spl-token = "7.0.0"
+spl-token-2022 = "6.0.0"
+tokio = { version = "1.41.1", features = ["macros", "rt", "rt-multi-thread"] }
