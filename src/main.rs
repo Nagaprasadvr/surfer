@@ -12,10 +12,10 @@ async fn main() -> anyhow::Result<()> {
 
     match cli.command {
         cli::Commands::Mint(m_cmd) => {
-            m_cmd.process();
+            m_cmd.process().await?;
         }
         cli::Commands::TokenAccount(ta_cmd) => {
-            ta_cmd.process();
+            ta_cmd.process().await?;
         }
     }
 

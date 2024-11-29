@@ -9,6 +9,8 @@ chrono = "0.4.38"
 clap = { version = "4.5.21", features = ["derive", "env"] }
 console = "0.15.8"
 dialoguer = "0.11.0"
+prettytable = "0.10.0"
+solana-account = "2.1.4"
 solana-client = "2.1.4"
 spl-token = "7.0.0"
 spl-token-2022 = "6.0.0"

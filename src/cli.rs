@@ -1,6 +1,6 @@
-use std::str::FromStr;
 use anyhow::Result;
-use clap::{Args, Parser, Subcommand};
+use clap::{Parser, Subcommand};
+use std::str::FromStr;
 
 use spl_token::solana_program::pubkey::Pubkey;
 
@@ -21,7 +21,7 @@ pub struct Cli {
     pub command: Commands,
 }
 
-impl Cli{
+impl Cli {
     pub fn validate_args(&self) -> Result<()> {
         self._check_rpc_url()?;
         Ok(())
@@ -36,21 +36,12 @@ impl Cli{
                     Err(anyhow::anyhow!("Invalid RPC URL: {}", url))
                 }
             }
-            None => Err(anyhow::anyhow!("RPC URL not provided use --solana-rpc-url or set SOLANA_RPC_URL env variable")),
+            None => Err(anyhow::anyhow!(
+                "RPC URL not provided use --solana-rpc-url or set SOLANA_RPC_URL env variable"
+            )),
         }
     }
-}
 
-#[derive(Debug, Args)]
-pub struct FetchAccount {
-    #[clap(flatten)]
-    pub solana: SolanaRpcArgs,
-    #[clap(value_parser = Self::parse_pubkey, 
-    help = "The account address to fetch. Must be a valid base58 encoded pubkey.")]
-    account_pubkey: Pubkey,
-}
-
-impl FetchAccount {
     pub fn parse_pubkey(pubkey_str: &str) -> Result<Pubkey> {
         match Pubkey::from_str(pubkey_str) {
             Ok(pubkey) => Ok(pubkey),
@@ -58,7 +49,19 @@ impl FetchAccount {
         }
     }
 }
-         
+#[derive(Clone, Parser, Debug)]
+pub struct SolanaRpcArgs {
+    #[arg(long, short, env)]
+    pub solana_rpc_url: String,
+}
+
+#[derive(Subcommand, Debug)]
+pub enum Commands {
+    #[clap(subcommand)]
+    Mint(MintCommands),
+    #[clap(subcommand)]
+    TokenAccount(TokenAccountCommands),
+}
 
 #[allow(dead_code)]
 pub enum TokenProgram {
@@ -73,19 +76,4 @@ impl Into<Pubkey> for TokenProgram {
             TokenProgram::LegacyToken => spl_token_2022::ID,
         }
     }
-}
-
-#[derive(Subcommand, Debug)]
-pub enum Commands {
-    #[clap(subcommand)]
-    Mint(MintCommands),
-    #[clap(subcommand)]
-    TokenAccount(TokenAccountCommands)
-}
-
-
-#[derive(Clone, Parser, Debug)]
-pub struct SolanaRpcArgs {
-    #[arg(long, short, env)]
-    pub solana_rpc_url: String,
 }
