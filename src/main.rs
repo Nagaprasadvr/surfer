@@ -4,6 +4,7 @@ use cli::Cli;
 mod cli;
 mod mint;
 mod token_account;
+mod utils;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {

@@ -1,5 +1,5 @@
 use clap::{Args, Subcommand};
-use prettytable::row;
+use prettytable::{color, Attr, Cell, Row};
 use solana_client::nonblocking::rpc_client::RpcClient;
 use spl_token::{
     solana_program::{program_pack::Pack, pubkey::Pubkey},
@@ -30,40 +30,83 @@ pub struct TokenAccountWithPubkey {
 }
 
 impl PrettyTokenAccount {
+    pub fn to_header_cell(header: &str) -> Cell {
+        Cell::new(header)
+            .with_style(Attr::Bold)
+            .with_style(Attr::ForegroundColor(color::WHITE))
+    }
+
+    pub fn to_key_cell(key: &str) -> Cell {
+        Cell::new(key)
+            .with_style(Attr::Bold)
+            .with_style(Attr::ForegroundColor(color::GREEN))
+    }
+
+    pub fn to_value_cell(value: &str) -> Cell {
+        Cell::new(value)
+            .with_style(Attr::Bold)
+            .with_style(Attr::ForegroundColor(color::BRIGHT_CYAN))
+    }
     pub fn print(&self) {
         let mut table = prettytable::Table::new();
 
-        table.add_row(row!["Token Account Pubkey", self.token_account_pubkey]);
-        table.add_row(row!["Mint", self.mint]);
-        table.add_row(row!["Owner", self.owner]);
-        table.add_row(row!["Amount", self.amount]);
-        table.add_row(row![
-            "Delegate",
-            self.delegate.clone().unwrap_or("None".to_string())
-        ]);
-        table.add_row(row![
-            "State",
-            match self.state {
-                AccountState::Frozen => {
-                    "Frozen"
-                }
-                AccountState::Initialized => {
-                    "Initialized"
-                }
-                AccountState::Uninitialized => {
-                    "Uninitialized"
-                }
-            }
-        ]);
-        table.add_row(row!["Is Native", self.is_native.unwrap_or(0)]);
-        table.add_row(row!["Delegated Amount", self.delegated_amount]);
-        table.add_row(row![
-            "Close Authority",
-            self.close_authority.clone().unwrap_or("None".to_string())
-        ]);
+        table.add_row(Row::new(vec![Self::to_header_cell("Token Account Data")]));
+
+        table.add_row(Row::new(vec![
+            Self::to_key_cell("Token Account Pubkey"),
+            Self::to_value_cell(&self.token_account_pubkey),
+        ]));
+
+        table.add_row(Row::new(vec![
+            Self::to_key_cell("Mint"),
+            Self::to_value_cell(&self.mint),
+        ]));
+
+        table.add_row(Row::new(vec![
+            Self::to_key_cell("Owner"),
+            Self::to_value_cell(&self.owner),
+        ]));
+
+        table.add_row(Row::new(vec![
+            Self::to_key_cell("Amount"),
+            Self::to_value_cell(&self.amount.to_string()),
+        ]));
+
+        table.add_row(Row::new(vec![
+            Self::to_key_cell("Delegate"),
+            Self::to_value_cell(&self.delegate.clone().map_or("None".to_string(), |pk| pk)),
+        ]));
+
+        table.add_row(Row::new(vec![
+            Self::to_key_cell("State"),
+            Self::to_value_cell(match self.state {
+                AccountState::Frozen => "Frozen",
+                AccountState::Initialized => "Initialized",
+                AccountState::Uninitialized => "Uninitialized",
+            }),
+        ]));
+
+        table.add_row(Row::new(vec![
+            Self::to_key_cell("Is Native"),
+            Self::to_value_cell(&self.is_native.map_or("None".to_string(), |v| v.to_string())),
+        ]));
+
+        table.add_row(Row::new(vec![
+            Self::to_key_cell("Delegated Amount"),
+            Self::to_value_cell(&self.delegated_amount.to_string()),
+        ]));
+
+        table.add_row(Row::new(vec![
+            Self::to_key_cell("Close Authority"),
+            Self::to_value_cell(
+                &self
+                    .close_authority
+                    .clone()
+                    .map_or("None".to_string(), |pk| pk),
+            ),
+        ]));
 
         println!();
-        println!("Token Account Data:");
         table.set_format(*prettytable::format::consts::FORMAT_CLEAN);
         table.printstd();
         println!();

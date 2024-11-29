@@ -1,12 +1,17 @@
+use std::time::Duration;
+
 use clap::{Args, Subcommand};
-use prettytable::{row, Table};
+use prettytable::{color, Attr, Cell, Row, Table};
 use solana_client::nonblocking::rpc_client::RpcClient;
 use spl_token::{
     solana_program::{program_pack::Pack, pubkey::Pubkey},
     state::Mint,
 };
 
-use crate::cli::{self, SolanaRpcArgs};
+use crate::{
+    cli::{self, SolanaRpcArgs},
+    utils,
+};
 
 #[derive(Debug)]
 pub struct PrettyMint {
@@ -24,28 +29,69 @@ pub struct MintWithPubkey {
 }
 
 impl PrettyMint {
+    pub fn to_header_cell(header: &str) -> Cell {
+        Cell::new(header)
+            .with_style(Attr::Bold)
+            .with_style(Attr::ForegroundColor(color::WHITE))
+    }
+    pub fn to_key_cell(key: &str) -> Cell {
+        Cell::new(key)
+            .with_style(Attr::Bold)
+            .with_style(Attr::ForegroundColor(color::GREEN))
+    }
+
+    pub fn to_value_cell(value: &str) -> Cell {
+        Cell::new(value)
+            .with_style(Attr::Bold)
+            .with_style(Attr::ForegroundColor(color::BRIGHT_CYAN))
+    }
+
     pub fn print(&self) {
         let mut table = Table::new();
 
-        table.add_row(row!["Mint Pubkey", self.mint_pubkey]);
-        table.add_row(row![
-            "Mint Authority",
-            self.mint_authority
-                .clone()
-                .map_or("None".to_string(), |pk| pk)
-        ]);
-        table.add_row(row!["Supply", self.supply]);
-        table.add_row(row!["Decimals", self.decimals]);
-        table.add_row(row!["Is Initialized", self.is_initialized]);
-        table.add_row(row![
-            "Freeze Authority",
-            self.freeze_authority
-                .clone()
-                .map_or("None".to_string(), |pk| pk)
-        ]);
+        table.add_row(Row::new(vec![Self::to_header_cell("Mint Data")]));
+
+        table.add_row(Row::new(vec![
+            Self::to_key_cell("Mint Pubkey"),
+            Self::to_value_cell(&self.mint_pubkey),
+        ]));
+
+        table.add_row(Row::new(vec![
+            Self::to_key_cell("Mint Authority"),
+            Self::to_value_cell(
+                &self
+                    .mint_authority
+                    .clone()
+                    .map_or("None".to_string(), |pk| pk),
+            ),
+        ]));
+
+        table.add_row(Row::new(vec![
+            Self::to_key_cell("Supply"),
+            Self::to_value_cell(&self.supply.to_string()),
+        ]));
+
+        table.add_row(Row::new(vec![
+            Self::to_key_cell("Decimals"),
+            Self::to_value_cell(&self.decimals.to_string()),
+        ]));
+
+        table.add_row(Row::new(vec![
+            Self::to_key_cell("Is Initialized"),
+            Self::to_value_cell(&self.is_initialized.to_string()),
+        ]));
+
+        table.add_row(Row::new(vec![
+            Self::to_key_cell("Freeze Authority"),
+            Self::to_value_cell(
+                &self
+                    .freeze_authority
+                    .clone()
+                    .map_or("None".to_string(), |pk| pk),
+            ),
+        ]));
 
         println!();
-        println!("Mint Data:");
         table.set_format(*prettytable::format::consts::FORMAT_CLEAN);
         table.printstd();
         println!();
@@ -84,11 +130,14 @@ impl MintCommands {
     pub async fn process(&self) -> anyhow::Result<()> {
         match self {
             MintCommands::Fetch(f) => {
+                let spinner = utils::get_spinner()?;
+                spinner.enable_steady_tick(Duration::from_millis(100));
                 let mint: PrettyMint = MintWithPubkey {
                     mint: f.process_fetch().await?,
                     pubkey: f.mint_pubkey.to_string(),
                 }
                 .into();
+                spinner.finish_and_clear();
 
                 mint.print();
             }

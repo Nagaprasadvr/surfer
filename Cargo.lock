@@ -5144,6 +5144,7 @@ dependencies = [
  "clap",
  "console",
  "dialoguer",
+ "indicatif",
  "prettytable",
  "solana-account",
  "solana-client",
