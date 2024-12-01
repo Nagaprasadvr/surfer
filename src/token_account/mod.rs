@@ -1,3 +1,9 @@
+use crate::{
+    cli::{self, SolanaRpcArgs, TokenProgram},
+    extension::{token_account_extensions_data_bytes, ExtensionData},
+    mint::metadata::TokenMetadata,
+    mint::{MintWithExtensions, MintWithPubkey, PrettyMint},
+};
 use clap::{Args, Subcommand};
 use colored::*;
 use prettytable::{color, Attr, Cell, Row};
@@ -5,12 +11,6 @@ use solana_account::Account;
 use solana_client::nonblocking::rpc_client::RpcClient;
 use spl_token::solana_program::{program_pack::Pack, pubkey::Pubkey};
 use spl_token_2022::extension::{BaseStateWithExtensions, StateWithExtensions};
-
-use crate::{
-    cli::{self, SolanaRpcArgs, TokenProgram},
-    extension::{token_account_extensions_data_bytes, ExtensionData},
-    mint::{MintWithExtensions, MintWithPubkey, PrettyMint},
-};
 
 #[derive(Debug)]
 pub struct PrettyTokenAccount {
@@ -234,7 +234,14 @@ impl TokenAccountCommands {
                 }
                 .into();
 
-                let mint_acc_data = MintWithExtensions::try_parse_mint_with_extensions(mint)?;
+                let token_metadata = TokenMetadata::fetch_and_parse(
+                    f.mint_pubkey.unwrap(),
+                    &RpcClient::new(f.solana.solana_rpc_url.clone()),
+                )
+                .await;
+
+                let mint_acc_data =
+                    MintWithExtensions::try_parse_mint_with_extensions(mint, token_metadata)?;
 
                 let mint: PrettyMint = MintWithPubkey {
                     mint_data: mint_acc_data,

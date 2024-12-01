@@ -1,13 +1,15 @@
-use std::time::Duration;
+pub mod metadata;
 
 use clap::{Args, Subcommand};
 use colored::*;
 use inquire::Select;
+use metadata::TokenMetadata;
 use prettytable::{color, Attr, Cell, Row, Table};
 use solana_account::Account;
 use solana_client::nonblocking::rpc_client::RpcClient;
 use spl_token::solana_program::{program_pack::Pack, pubkey::Pubkey};
 use spl_token_2022::extension::{BaseStateWithExtensions, StateWithExtensions};
+use std::time::Duration;
 
 use crate::{
     cli::{self, SolanaRpcArgs, TokenProgram},
@@ -24,6 +26,7 @@ pub struct PrettyMint {
     pub is_initialized: bool,
     pub freeze_authority: Option<String>,
     pub extensions: Option<Vec<ExtensionData>>,
+    pub token_metadata: Option<TokenMetadata>,
 }
 
 pub struct MintWithPubkey {
@@ -38,11 +41,15 @@ pub enum MintType {
 
 pub struct MintWithExtensions {
     pub base: MintType,
+    pub token_metadata: Option<TokenMetadata>,
     pub extensions: Option<Vec<ExtensionData>>,
 }
 
 impl MintWithExtensions {
-    pub fn try_parse_mint_with_extensions(data: Account) -> anyhow::Result<Self> {
+    pub fn try_parse_mint_with_extensions(
+        data: Account,
+        token_metadata: Option<TokenMetadata>,
+    ) -> anyhow::Result<Self> {
         let token_program = TokenProgram::try_from(data.owner)?;
         let data_bytes = data.data.as_slice();
         match token_program {
@@ -52,6 +59,7 @@ impl MintWithExtensions {
 
                 Ok(Self {
                     base: MintType::LegacyMint(mint),
+                    token_metadata,
                     extensions: None,
                 })
             }
@@ -70,6 +78,7 @@ impl MintWithExtensions {
                 Ok(Self {
                     base: MintType::Mint2022(unpacked.base),
                     extensions: Some(extension_data_vec),
+                    token_metadata,
                 })
             }
         }
@@ -142,16 +151,48 @@ impl PrettyMint {
         println!();
         table.set_format(*prettytable::format::consts::FORMAT_CLEAN);
         table.printstd();
-        println!();
 
         match &self.extensions {
             Some(extensions) => {
                 let data = format!("{:#?}", extensions).cyan();
-                println!(
-                    " {} : {}",
-                    "Mint Extensions".purple().bold(),
-                    data.cyan().bold()
-                );
+                if !extensions.is_empty() {
+                    println!();
+                    println!(" {} : {}", "Mint Extensions".purple().bold(), data.bold());
+                }
+            }
+            None => {}
+        }
+
+        match &self.token_metadata {
+            Some(metadata) => {
+                println!();
+                let meta = metadata
+                    .metadata
+                    .as_ref()
+                    .map_or("None".to_string(), |m| format!("{:#?}", m));
+
+                let master_edition = metadata
+                    .master_edition
+                    .as_ref()
+                    .map_or("None".to_string(), |me| format!("{:#?}", me));
+
+                if meta != "None" {
+                    println!(
+                        " {} : {}",
+                        "Token Metadata".purple().bold(),
+                        meta.cyan().bold()
+                    );
+                }
+
+                println!();
+
+                if master_edition != "None" {
+                    println!(
+                        " {} : {}",
+                        "Master Edition".purple().bold(),
+                        master_edition.cyan().bold()
+                    );
+                }
             }
             None => {}
         }
@@ -170,6 +211,7 @@ impl From<MintWithPubkey> for PrettyMint {
                 is_initialized: mint.is_initialized,
                 freeze_authority: mint.freeze_authority.map(|pk| pk.to_string()).into(),
                 extensions: None,
+                token_metadata: mint_with_pubkey.mint_data.token_metadata,
             },
             MintType::Mint2022(mint) => Self {
                 mint_pubkey: mint_with_pubkey.pubkey.to_string(),
@@ -179,6 +221,7 @@ impl From<MintWithPubkey> for PrettyMint {
                 is_initialized: mint.is_initialized,
                 freeze_authority: mint.freeze_authority.map(|pk| pk.to_string()).into(),
                 extensions: mint_with_pubkey.mint_data.extensions,
+                token_metadata: mint_with_pubkey.mint_data.token_metadata,
             },
         }
     }
@@ -235,7 +278,9 @@ impl FetchMint {
     pub async fn process_fetch_and_parse(&self) -> anyhow::Result<MintWithExtensions> {
         let rpc_client = RpcClient::new(self.solana.solana_rpc_url.clone());
         let acc = rpc_client.get_account(&self.mint_pubkey).await?;
-        let mint_with_extensions = MintWithExtensions::try_parse_mint_with_extensions(acc)?;
+        let token_metadata = TokenMetadata::fetch_and_parse(self.mint_pubkey, &rpc_client).await;
+        let mint_with_extensions =
+            MintWithExtensions::try_parse_mint_with_extensions(acc, token_metadata)?;
 
         Ok(mint_with_extensions)
     }
