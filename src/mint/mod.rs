@@ -2,6 +2,7 @@ use std::time::Duration;
 
 use clap::{Args, Subcommand};
 use colored::*;
+use inquire::Select;
 use prettytable::{color, Attr, Cell, Row, Table};
 use solana_account::Account;
 use solana_client::nonblocking::rpc_client::RpcClient;
@@ -186,8 +187,7 @@ impl From<MintWithPubkey> for PrettyMint {
 #[derive(Debug, Subcommand)]
 pub enum MintCommands {
     Fetch(FetchMint),
-    #[clap(subcommand)]
-    Ix(MintInstructions),
+    Ix,
 }
 
 impl MintCommands {
@@ -205,8 +205,16 @@ impl MintCommands {
 
                 mint.print();
             }
-            MintCommands::Ix(ix) => {
-                println!("Ix command:{:?}", ix);
+            MintCommands::Ix => {
+                let ix = MintInstructions::from_select_str(
+                    Select::new(
+                        "Select an instruction to execute",
+                        MintInstructions::to_select_vec(),
+                    )
+                    .prompt()?,
+                )?;
+
+                println!("{:?}", ix);
             }
         }
 
@@ -235,5 +243,33 @@ impl FetchMint {
 
 #[derive(Debug, Subcommand)]
 pub enum MintInstructions {
-    Create,
+    InitializeMint,
+    SetAuthority,
+    MintTo,
+    MintToChecked,
+    InitilaizeMint2,
+}
+
+impl MintInstructions {
+    pub fn to_select_vec() -> Vec<&'static str> {
+        vec![
+            "InitializeMint",
+            "SetAuthority",
+            "MintTo",
+            "MintToChecked",
+            "InitilaizeMint2",
+        ]
+    }
+
+    pub fn from_select_str(select_str: &str) -> anyhow::Result<Self> {
+        match select_str {
+            "InitializeMint" => Ok(Self::InitializeMint),
+            "SetAuthority" => Ok(Self::SetAuthority),
+            "MintTo" => Ok(Self::MintTo),
+            "MintToChecked" => Ok(Self::MintToChecked),
+            "InitilaizeMint2" => Ok(Self::InitilaizeMint2),
+
+            _ => Err(anyhow::anyhow!("Invalid mint instruction: {}", select_str)),
+        }
+    }
 }
