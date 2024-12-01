@@ -5,14 +5,22 @@ edition = "2021"
 
 [dependencies]
 anyhow = "1.0.93"
+bytemuck = "1.20.0"
 chrono = "0.4.38"
 clap = { version = "4.5.21", features = ["derive", "env"] }
+colored = "2.1.0"
 console = "0.15.8"
 dialoguer = "0.11.0"
 indicatif = "0.17.9"
+inquire = "0.7.5"
 prettytable = "0.10.0"
+serde = "1.0.215"
 solana-account = "2.1.4"
 solana-client = "2.1.4"
+spl-pod = { version = "0.5.0", features = ["serde-traits"] }
 spl-token = "7.0.0"
-spl-token-2022 = "6.0.0"
+spl-token-2022 = { version = "6.0.0", features = ["serde-traits"] }
+spl-token-group-interface = "0.5.0"
+spl-token-metadata-interface = "0.6.0"
+spl-type-length-value = "0.7.0"
 tokio = { version = "1.41.1", features = ["macros", "rt", "rt-multi-thread"] }

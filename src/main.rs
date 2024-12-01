@@ -2,6 +2,7 @@ use clap::Parser;
 use cli::Cli;
 
 mod cli;
+mod extension;
 mod mint;
 mod token_account;
 mod utils;

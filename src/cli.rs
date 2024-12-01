@@ -1,5 +1,5 @@
-use anyhow::Result;
 use clap::{Parser, Subcommand};
+
 use std::str::FromStr;
 
 use spl_token::solana_program::pubkey::Pubkey;
@@ -22,12 +22,12 @@ pub struct Cli {
 }
 
 impl Cli {
-    pub fn validate_args(&self) -> Result<()> {
+    pub fn validate_args(&self) -> anyhow::Result<()> {
         self._check_rpc_url()?;
         Ok(())
     }
 
-    fn _check_rpc_url(&self) -> Result<()> {
+    fn _check_rpc_url(&self) -> anyhow::Result<()> {
         match &self.solana_rpc_url {
             Some(url) => {
                 if url.starts_with("https://") {
@@ -42,7 +42,7 @@ impl Cli {
         }
     }
 
-    pub fn parse_pubkey(pubkey_str: &str) -> Result<Pubkey> {
+    pub fn parse_pubkey(pubkey_str: &str) -> anyhow::Result<Pubkey> {
         match Pubkey::from_str(pubkey_str) {
             Ok(pubkey) => Ok(pubkey),
             Err(err) => Err(anyhow::anyhow!("Invalid pubkey: {}", err)),
@@ -63,7 +63,7 @@ pub enum Commands {
     TokenAccount(TokenAccountCommands),
 }
 
-#[allow(dead_code)]
+#[derive(Debug, Clone)]
 pub enum TokenProgram {
     Token2022,
     LegacyToken,
@@ -74,6 +74,31 @@ impl Into<Pubkey> for TokenProgram {
         match self {
             TokenProgram::Token2022 => spl_token::ID,
             TokenProgram::LegacyToken => spl_token_2022::ID,
+        }
+    }
+}
+
+impl TryFrom<Pubkey> for TokenProgram {
+    type Error = anyhow::Error;
+    fn try_from(pubkey: Pubkey) -> anyhow::Result<Self> {
+        match pubkey {
+            spl_token::ID => Ok(TokenProgram::LegacyToken),
+            spl_token_2022::ID => Ok(TokenProgram::Token2022),
+            _ => Err(anyhow::anyhow!("Invalid token program pubkey: {}", pubkey)),
+        }
+    }
+}
+
+impl TokenProgram {
+    pub fn _to_select_vec() -> Vec<&'static str> {
+        vec!["Token2022", "LegacyToken"]
+    }
+
+    pub fn _from_select_str(select_str: &str) -> anyhow::Result<Self> {
+        match select_str {
+            "Token2022" => Ok(TokenProgram::Token2022),
+            "LegacyToken" => Ok(TokenProgram::LegacyToken),
+            _ => Err(anyhow::anyhow!("Invalid token program: {}", select_str)),
         }
     }
 }
