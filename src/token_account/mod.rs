@@ -162,7 +162,7 @@ impl PrettyTokenAccount {
             Some(extensions) => {
                 let data = format!("{:#?}", extensions).bright_yellow();
                 println!(
-                    "{} : {}",
+                    " {} : {}",
                     "Token Account Extensions".purple().bold(),
                     data.cyan().bold()
                 );

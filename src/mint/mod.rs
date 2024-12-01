@@ -147,7 +147,7 @@ impl PrettyMint {
             Some(extensions) => {
                 let data = format!("{:#?}", extensions).cyan();
                 println!(
-                    "{} : {}",
+                    " {} : {}",
                     "Mint Extensions".purple().bold(),
                     data.cyan().bold()
                 );
