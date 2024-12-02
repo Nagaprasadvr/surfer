@@ -1,3 +1,5 @@
+use std::str::FromStr;
+
 use crate::{
     cli::{self, SolanaRpcArgs, TokenProgram},
     extension::{token_account_extensions_data_bytes, ExtensionData},
@@ -235,7 +237,7 @@ impl TokenAccountCommands {
                 .into();
 
                 let token_metadata = TokenMetadata::fetch_and_parse(
-                    f.mint_pubkey.unwrap(),
+                    Pubkey::from_str(&token_account.mint)?,
                     &RpcClient::new(f.solana.solana_rpc_url.clone()),
                 )
                 .await;
