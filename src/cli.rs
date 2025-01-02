@@ -1,10 +1,17 @@
 use clap::{Parser, Subcommand};
+use solana_client::nonblocking::rpc_client::RpcClient;
+use solana_sdk::{
+    signature::{Keypair, Signature},
+    signer::Signer,
+};
 
 use std::str::FromStr;
 
 use spl_token::solana_program::pubkey::Pubkey;
 
 use crate::{mint::MintCommands, token_account::TokenAccountCommands};
+
+pub const DEFAULT_KEYPAIR_PATH: &str = ".config/solana/id.json";
 
 #[derive(Parser, Debug)]
 #[clap(author, version, about)]
@@ -37,7 +44,7 @@ impl Cli {
                 }
             }
             None => Err(anyhow::anyhow!(
-                "RPC URL not provided use --solana-rpc-url or set SOLANA_RPC_URL env variable"
+                "RPC URL not provided use --solana-rpc-url or set `SOLANA_RPC_URL` env variable"
             )),
         }
     }
@@ -100,5 +107,48 @@ impl TokenProgram {
             "LegacyToken" => Ok(TokenProgram::LegacyToken),
             _ => Err(anyhow::anyhow!("Invalid token program: {}", select_str)),
         }
+    }
+}
+
+pub struct LocalWallet {
+    pub keypair: Keypair,
+}
+
+impl LocalWallet {
+    pub fn fetch() -> anyhow::Result<LocalWallet> {
+        let home_dir = dirs::home_dir().ok_or_else(|| anyhow::anyhow!("Failed to get home dir"))?;
+        let keypair = solana_sdk::signature::read_keypair_file(home_dir.join(DEFAULT_KEYPAIR_PATH))
+            .map_err(|e| {
+                anyhow::anyhow!(
+                    "Failed to read keypair file from path {}: {}",
+                    DEFAULT_KEYPAIR_PATH,
+                    e
+                )
+            })?;
+        Ok(LocalWallet { keypair })
+    }
+
+    pub fn pubkey(&self) -> Pubkey {
+        self.keypair.pubkey()
+    }
+
+    pub async fn sign_and_send_ixs(
+        &self,
+        ixs: Vec<solana_sdk::instruction::Instruction>,
+        rpc_url: &str,
+    ) -> anyhow::Result<Signature> {
+        let mut tx = solana_sdk::transaction::Transaction::new_with_payer(
+            &ixs,
+            Some(&self.keypair.pubkey()),
+        );
+        let rpc_client = RpcClient::new(rpc_url.to_string());
+        let recent_blockhash = rpc_client.get_latest_blockhash().await?;
+        tx.sign(&[&self.keypair], recent_blockhash);
+
+        let sig = rpc_client.send_and_confirm_transaction(&tx).await?;
+
+        println!("Transaction signature: {}", sig);
+
+        Ok(sig)
     }
 }
